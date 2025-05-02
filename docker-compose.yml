@@ -1,0 +1,31 @@
+
+services:
+  ssh-server:
+    build:
+      context: .
+      args:
+        SSH_USER: ${SSH_USER}
+        SSH_PASS: ${SSH_PASS}
+    container_name: ssh_ubuntu_container
+    ports:
+      - "2222:22"
+    volumes:
+      - ./main_data:/home/${SSH_USER}
+      - ./ssh/sshd_config:/etc/ssh/sshd_config:ro
+      - ./ssh/authorized_keys:/home/${SSH_USER}/.ssh/authorized_keys:ro
+    restart: unless-stopped
+
+  filebrowser:
+      ports:
+          - 80:80
+      restart: unless-stopped            
+      image: filebrowser/filebrowser:s6
+      # environment:
+      #     - PUID=1000
+      #     - PGID=1000
+      # user: "true"        
+      volumes:
+          - ./main_data:/srv
+          # - ./filebrowser.db:/database/filebrowser.db        
+          - ./filebrowser_settings.json:/config/settings.json
+
