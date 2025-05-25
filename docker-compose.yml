@@ -6,7 +6,6 @@ services:
       args:
         SSH_USER: ${SSH_USER}
         SSH_PASS: ${SSH_PASS}
-    container_name: ssh_ubuntu_container
     ports:
       - "2222:22"
     volumes:
@@ -14,6 +13,8 @@ services:
       - ./ssh/sshd_config:/etc/ssh/sshd_config:ro
       - ./ssh/authorized_keys:/home/${SSH_USER}/.ssh/authorized_keys:ro
     restart: unless-stopped
+    container_name: ssh-server
+
 
   filebrowser:
       ports:
@@ -28,4 +29,19 @@ services:
           - ./main_data:/srv
           # - ./filebrowser.db:/database/filebrowser.db        
           - ./filebrowser_settings.json:/config/settings.json
+      container_name: filebrowser
 
+  jupyter:
+      image: jupyter/minimal-notebook
+      ports:
+          - "8888:8888"
+      volumes:
+          - ./main_data:/home/jovyan/work  # เก็บ notebook
+          - ./requirements.txt:/home/jovyan/requirements.txt  # mount requirements.txt
+      environment:
+          - JUPYTER_ENABLE_LAB=yes
+          - JUPYTER_TOKEN=${SSH_PASS}
+      command: bash -c "pip install -r /home/jovyan/requirements.txt && start-notebook.sh"
+      container_name: jupyter
+
+# docker exec -it jupyter ls
