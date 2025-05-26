@@ -2,7 +2,7 @@
 services:
   ssh-server:
     build:
-      context: .
+      context: ./dev_ssh-server
       args:
         SSH_USER: ${SSH_USER}
         SSH_PASS: ${SSH_PASS}
@@ -10,15 +10,15 @@ services:
       - "2222:22"
     volumes:
       - ./main_data:/home/${SSH_USER}
-      - ./ssh/sshd_config:/etc/ssh/sshd_config:ro
-      - ./ssh/authorized_keys:/home/${SSH_USER}/.ssh/authorized_keys:ro
+      - ./dev_ssh-server/ssh/sshd_config:/etc/ssh/sshd_config:ro
+      - ./dev_ssh-server/ssh/authorized_keys:/home/${SSH_USER}/.ssh/authorized_keys:ro
     restart: unless-stopped
     container_name: ssh-server
 
 
   filebrowser:
       ports:
-          - 80:80
+          - 8080:80
       restart: unless-stopped            
       image: filebrowser/filebrowser:s6
       # environment:
@@ -31,17 +31,23 @@ services:
           - ./filebrowser_settings.json:/config/settings.json
       container_name: filebrowser
 
-  jupyter:
-      image: jupyter/minimal-notebook
-      ports:
-          - "8888:8888"
-      volumes:
-          - ./main_data:/home/jovyan/work  # เก็บ notebook
-          - ./requirements.txt:/home/jovyan/requirements.txt  # mount requirements.txt
-      environment:
-          - JUPYTER_ENABLE_LAB=yes
-          - JUPYTER_TOKEN=${SSH_PASS}
-      command: bash -c "pip install -r /home/jovyan/requirements.txt && start-notebook.sh"
-      container_name: jupyter
 
+  jupyter:
+    build:
+      context: ./dev_jupyter
+      dockerfile: Dockerfile
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./main_data:/home/master/nas
+      - ./dev_jupyter/requirements_python.txt:/home/master/requirements_python.txt
+      - ./dev_jupyter/requirements_java.txt:/home/master/requirements_java.txt
+      - ./dev_jupyter/dockerfile:/home/master/dockerfile
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+      - JUPYTER_TOKEN=master
+    container_name: jupyter
+    # command: jupyter lab --ip=0.0.0.0 --no-browser --NotebookApp.token=${JUPYTER_TOKEN}
+    command: jupyter lab --ip=0.0.0.0 --no-browser --NotebookApp.token=${JUPYTER_TOKEN} --NotebookApp.notebook_dir=/home/master/
 # docker exec -it jupyter ls
+# docker logs jupyter 
