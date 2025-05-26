@@ -1,11 +1,12 @@
 
 services:
   ssh-server:
-    build:
-      context: ./dev_ssh-server
-      args:
-        SSH_USER: ${SSH_USER}
-        SSH_PASS: ${SSH_PASS}
+    # build:
+    #   context: ./dev_ssh-server
+      # args:
+      #   SSH_USER: ${SSH_USER}
+      #   SSH_PASS: ${SSH_PASS}
+    image: taothong/u-ssh-server:1.0
     ports:
       - "2222:22"
     volumes:
@@ -33,9 +34,10 @@ services:
 
 
   jupyter:
-    build:
-      context: ./dev_jupyter
-      dockerfile: Dockerfile
+    # build:
+    #   context: ./dev_jupyter
+    #   dockerfile: Dockerfile
+    image: taothong/u-jupyter:1.0
     ports:
       - "8888:8888"
     volumes:
