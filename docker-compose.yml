@@ -34,10 +34,10 @@ services:
 
 
   jupyter:
-    build:
-      context: ./dev_jupyter
-      dockerfile: dockerfile_almalinux
-    # image: taothong/u-jupyter:1.0
+    # build:
+    #   context: ./dev_jupyter
+    #   dockerfile: dockerfile_almalinux
+    image: taothong/u-jupyter:2.0
     ports:
       - "8888:8888"
     volumes:
