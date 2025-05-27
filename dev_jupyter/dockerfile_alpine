@@ -1,0 +1,56 @@
+FROM alpine:latest
+
+# ตั้งค่า environment variables เพื่อหลีกเลี่ยง interactive prompts
+ENV PYTHONUNBUFFERED=1 \
+    JUPYTER_TOKEN=master \
+    JUPYTER_ENABLE_LAB=yes
+
+# อัปเดตระบบและติดตั้ง dependencies
+RUN apk update && \
+    apk add --no-cache \
+        python3 \
+        py3-pip \
+        python3-dev \
+        build-base \
+        musl-dev \
+        linux-headers \
+        openjdk11 \
+        sudo \
+        bash && \
+    rm -rf /var/cache/apk/*
+
+# ตั้งค่า JAVA_HOME
+ENV JAVA_HOME=/usr/lib/jvm/java-11-openjdk
+ENV PATH=$JAVA_HOME/bin:/home/master/.local/bin:$PATH
+
+# สร้างผู้ใช้ master และตั้งรหัสผ่าน
+RUN adduser -D -s /bin/bash master && \
+    echo "master:master" | chpasswd && \
+    echo "master ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/master
+
+# คัดลอก requirements files สำหรับ Python และ Java
+COPY requirements_python.txt /home/master/requirements_python.txt
+COPY requirements_java.txt /home/master/requirements_java.txt
+
+# สร้าง virtual environment และติดตั้ง Python packages
+RUN python3 -m venv /home/master/venv && \
+    /home/master/venv/bin/pip install --no-cache-dir -U pip setuptools wheel && \
+    /home/master/venv/bin/pip install --no-cache-dir -r /home/master/requirements_python.txt && \
+    chown -R master:master /home/master
+
+# สลับไปใช้ผู้ใช้ master
+USER master
+WORKDIR /home/master/nas
+
+# สร้าง work directory และตั้งค่า permissions
+RUN mkdir -p /home/master/nas && \
+    chown -R master:master /home/master/nas
+
+# อัปเดต PATH เพื่อใช้ virtual environment
+ENV PATH=/home/master/venv/bin:$PATH
+
+# เปิด port สำหรับ Jupyter
+EXPOSE 8888
+
+# คำสั่งเริ่มต้น
+CMD ["jupyter", "lab", "--ip=0.0.0.0", "--no-browser", "--NotebookApp.token=${JUPYTER_TOKEN}"]
