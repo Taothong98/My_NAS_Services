@@ -3,9 +3,10 @@ FROM rockylinux:9
 # ตั้งค่า environment variables เพื่อหลีกเลี่ยง interactive prompts
 ENV PYTHONUNBUFFERED=1 \
     JUPYTER_TOKEN=master \
-    JUPYTER_ENABLE_LAB=yes
+    JUPYTER_ENABLE_LAB=yes \
+    DEBIAN_FRONTEND=noninteractive
 
-# อัปเดตระบบและติดตั้ง dependencies
+# อัปเดตระบบและติดตั้ง dependencies รวมถึง SSH
 RUN dnf update -y && \
     dnf install -y \
         python3 \
@@ -14,9 +15,14 @@ RUN dnf update -y && \
         gcc \
         java-11-openjdk-devel \
         sudo \
-        bash && \
+        bash \
+        openssh-server && \
     dnf clean all && \
-    rm -rf /var/cache/dnf
+    rm -rf /var/cache/dnf && \
+    mkdir -p /var/run/sshd && \
+    ssh-keygen -A && \
+    echo "PermitRootLogin no" >> /etc/ssh/sshd_config && \
+    echo "PasswordAuthentication yes" >> /etc/ssh/sshd_config
 
 # ตั้งค่า JAVA_HOME
 ENV JAVA_HOME=/usr/lib/jvm/java-11-openjdk
@@ -27,6 +33,11 @@ RUN useradd -m -s /bin/bash master && \
     echo "master:master" | chpasswd && \
     usermod -aG wheel master && \
     echo "master ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/master
+
+# ตั้งค่า SSH directory
+RUN mkdir -p /home/master/.ssh && \
+    chown master:master /home/master/.ssh && \
+    chmod 700 /home/master/.ssh
 
 # คัดลอก requirements files สำหรับ Python และ Java
 COPY requirements_python.txt /home/master/requirements_python.txt
@@ -45,8 +56,12 @@ WORKDIR /home/master/nas
 RUN mkdir -p /home/master/nas && \
     chown -R master:master /home/master/nas
 
-# เปิด port สำหรับ Jupyter
-EXPOSE 8888
+# เปิด port สำหรับ Jupyter และ SSH
+EXPOSE 8888 22
 
-# คำสั่งเริ่มต้น
-CMD ["jupyter", "lab", "--ip=0.0.0.0", "--no-browser", "--NotebookApp.token=${JUPYTER_TOKEN}"]
+# คัดลอก entrypoint script
+COPY entrypoint.sh /entrypoint.sh
+RUN sudo chmod +x /entrypoint.sh
+
+# ใช้ entrypoint เพื่อรันทั้ง SSH และ Jupyter
+ENTRYPOINT ["/entrypoint.sh"]
